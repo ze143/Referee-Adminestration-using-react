@@ -38,7 +38,7 @@ export default function Matches() {
     competition_id: "",
     stage_id: "",
     date: "",
-    status: "",
+    status: "upcoming",
     notified: "",
   });
 
