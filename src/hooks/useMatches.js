@@ -42,8 +42,8 @@ export function useMatches({
         `,
           { count: "exact" },
         )
-        .order("match_date", { ascending: false })
-        .order("match_time", { ascending: false })
+        .order("match_date", { ascending: true })
+        .order("match_time", { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (filters.competition_id)

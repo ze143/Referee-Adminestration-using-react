@@ -1,93 +1,93 @@
-import { useState, lazy, Suspense } from 'react'
-import { Plus, Users } from 'lucide-react'
-import PageHeader from '@/components/ui/PageHeader'
-import Button from '@/components/ui/Button'
-import Spinner from '@/components/ui/Spinner'
-import Pagination from '@/components/ui/Pagination'
-import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { useState, lazy, Suspense } from "react";
+import { Plus, Users } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
+import Button from "@/components/ui/Button";
+import Spinner from "@/components/ui/Spinner";
+import Pagination from "@/components/ui/Pagination";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   useMatches,
   useDeleteMatch,
   useToggleNotify,
-} from '@/hooks/useMatches'
-import MatchFilters from '@/components/features/matches/MatchFilters'
-import MatchTable from '@/components/features/matches/MatchTable'
+} from "@/hooks/useMatches";
+import MatchFilters from "@/components/features/matches/MatchFilters";
+import MatchTable from "@/components/features/matches/MatchTable";
 
 // Lazy modals
 const MatchFormModal = lazy(
-  () => import('@/components/features/matches/MatchFormModal'),
-)
+  () => import("@/components/features/matches/MatchFormModal"),
+);
 const MatchEditModal = lazy(
-  () => import('@/components/features/matches/MatchEditModal'),
-)
+  () => import("@/components/features/matches/MatchEditModal"),
+);
 const AssignmentModal = lazy(
-  () => import('@/components/features/matches/AssignmentModal'),
-)
+  () => import("@/components/features/matches/AssignmentModal"),
+);
 const MatchDetailsModal = lazy(
-  () => import('@/components/features/matches/MatchDetailsModal'),
-)
+  () => import("@/components/features/matches/MatchDetailsModal"),
+);
 const ExcuseModal = lazy(
-  () => import('@/components/features/matches/ExcuseModal'),
-)
+  () => import("@/components/features/matches/ExcuseModal"),
+);
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 20;
 
 export default function Matches() {
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(0);
   const [filters, setFilters] = useState({
-    competition_id: '',
-    stage_id: '',
-    date: '',
-    status: '',
-    notified: '',
-  })
+    competition_id: "",
+    stage_id: "",
+    date: "",
+    status: "",
+    notified: "",
+  });
 
   const { data, isLoading } = useMatches({
     page,
     pageSize: PAGE_SIZE,
     filters,
-  })
-  const matches = data?.data || []
-  const total = data?.total || 0
+  });
+  const matches = data?.data || [];
+  const total = data?.total || 0;
 
-  const deleteMutation = useDeleteMatch()
-  const toggleNotify = useToggleNotify()
+  const deleteMutation = useDeleteMatch();
+  const toggleNotify = useToggleNotify();
 
   // Modals state
-  const [formOpen, setFormOpen] = useState(false)
-  const [editMatch, setEditMatch] = useState(null)
-  const [assignOpen, setAssignOpen] = useState(false)
-  const [assignMatches, setAssignMatches] = useState([])
-  const [detailsId, setDetailsId] = useState(null)
-  const [excuseMatch, setExcuseMatch] = useState(null)
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [formOpen, setFormOpen] = useState(false);
+  const [editMatch, setEditMatch] = useState(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignMatches, setAssignMatches] = useState([]);
+  const [detailsId, setDetailsId] = useState(null);
+  const [excuseMatch, setExcuseMatch] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const updateFilters = (newFilters) => {
-    setFilters(newFilters)
-    setPage(0)
-  }
+    setFilters(newFilters);
+    setPage(0);
+  };
 
   // ============ Handlers ============
   const handleAssignOne = (match) => {
-    setAssignMatches([match])
-    setAssignOpen(true)
-  }
+    setAssignMatches([match]);
+    setAssignOpen(true);
+  };
 
   const handleAssignAll = () => {
-    setAssignMatches(matches)
-    setAssignOpen(true)
-  }
+    setAssignMatches(matches);
+    setAssignOpen(true);
+  };
 
   const handleToggleNotify = (matchId, role, currentValue) => {
-    toggleNotify.mutate({ matchId, role, currentValue })
-  }
+    toggleNotify.mutate({ matchId, role, currentValue });
+  };
 
   const handleDelete = async () => {
     if (deleteTarget) {
-      await deleteMutation.mutateAsync(deleteTarget.id)
-      setDeleteTarget(null)
+      await deleteMutation.mutateAsync(deleteTarget.id);
+      setDeleteTarget(null);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -117,13 +117,13 @@ export default function Matches() {
         onChange={updateFilters}
         onReset={() => {
           setFilters({
-            competition_id: '',
-            stage_id: '',
-            date: '',
-            status: '',
-            notified: '',
-          })
-          setPage(0)
+            competition_id: "",
+            stage_id: "",
+            date: "",
+            status: "upcoming",
+            notified: "",
+          });
+          setPage(0);
         }}
       />
 
@@ -171,8 +171,8 @@ export default function Matches() {
             matches={assignMatches}
             onClose={() => setAssignOpen(false)}
             onSuccess={() => {
-              setAssignOpen(false)
-              setAssignMatches([])
+              setAssignOpen(false);
+              setAssignMatches([]);
             }}
           />
         )}
@@ -206,5 +206,5 @@ export default function Matches() {
         )}
       </Suspense>
     </div>
-  )
+  );
 }
