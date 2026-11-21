@@ -52,6 +52,7 @@ export function useMatches({
       if (filters.group_id) query = query.eq("group_id", filters.group_id);
       if (filters.date) query = query.eq("match_date", filters.date);
 
+      console.log("Applied Status Filter:", filters.status);
       if (filters.status === "upcoming") {
         const today = new Date().toISOString().split("T")[0];
         query = query.gte("match_date", today);
@@ -71,6 +72,14 @@ export function useMatches({
         query = query.eq("away_team_id", filters.away_team_id);
 
       const { data, error, count } = await query;
+      console.log("🔎 Matches Query Result:", {
+  status: filters.status,
+  total: count,
+  dates: data?.map((match) => ({
+    date: match.match_date,
+    time: match.match_time,
+  })),
+});
       if (error) throw error;
       return { data: data || [], total: count || 0 };
     },

@@ -41,6 +41,7 @@ export default function Matches() {
     status: "upcoming",
     notified: "",
   });
+  console.log("Current Match Filters:", filters);
 
   const { data, isLoading } = useMatches({
     page,
