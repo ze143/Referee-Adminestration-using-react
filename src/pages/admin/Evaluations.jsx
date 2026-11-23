@@ -19,6 +19,8 @@ export default function Evaluations() {
   const { data: matches = [], isLoading } = useFinishedMatches()
   const { data: evaluations = [] } = useEvaluations()
   const [filter, setFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [selectedMatch, setSelectedMatch] = useState(null)
 
   // إحصائيات
@@ -35,12 +37,27 @@ export default function Evaluations() {
 
   // فلترة
   const filtered = useMemo(() => {
-    if (filter === 'all') return matches
-    const evaluatedIds = new Set(evaluations.map((e) => e.match_id))
-    if (filter === 'evaluated') return matches.filter((m) => evaluatedIds.has(m.id))
-    if (filter === 'pending') return matches.filter((m) => !evaluatedIds.has(m.id))
-    return matches
-  }, [matches, evaluations, filter])
+    let result = [...matches]
+
+    // فلتر التابات
+    if (filter !== 'all') {
+      const evaluatedIds = new Set(evaluations.map((e) => e.match_id))
+      if (filter === 'evaluated') {
+        result = result.filter((m) => evaluatedIds.has(m.id))
+      } else if (filter === 'pending') {
+        result = result.filter((m) => !evaluatedIds.has(m.id))
+      }
+    }
+
+    // فلتر التاريخ
+    if (dateFrom) result = result.filter((m) => m.match_date >= dateFrom)
+    if (dateTo) result = result.filter((m) => m.match_date <= dateTo)
+
+    // الترتيب: من الأقدم للأحدث
+    result.sort((a, b) => new Date(a.match_date) - new Date(b.match_date))
+
+    return result
+  }, [matches, evaluations, filter, dateFrom, dateTo])
 
   return (
     <div className="space-y-6">
@@ -72,6 +89,30 @@ export default function Evaluations() {
             {f.label}
           </button>
         ))}
+      </div>
+
+      {/* فلتر التاريخ */}
+      <div className="glass-card p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="label">من تاريخ</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">إلى تاريخ</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="input"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Matches list */}
@@ -107,7 +148,7 @@ export default function Evaluations() {
   )
 }
 
-// تجميع حسب التاريخ
+// تجميع حسب التاريخ — الترتيب من الأقدم للأحدث
 function EvaluationsGrouped({ matches, evaluations, onEvaluate }) {
   const grouped = useMemo(() => {
     const groups = {}
@@ -115,7 +156,8 @@ function EvaluationsGrouped({ matches, evaluations, onEvaluate }) {
       if (!groups[m.match_date]) groups[m.match_date] = []
       groups[m.match_date].push(m)
     })
-    return Object.entries(groups).sort((a, b) => new Date(b[0]) - new Date(a[0]))
+    // ترتيب تصاعدي (الأقدم أولاً)
+    return Object.entries(groups).sort((a, b) => new Date(a[0]) - new Date(b[0]))
   }, [matches])
 
   return (

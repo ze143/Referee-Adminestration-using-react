@@ -38,7 +38,7 @@ export function useMatches({
           var_referee:referees!matches_var_referee_id_fkey(id, full_name),
           avar_referee:referees!matches_avar_referee_id_fkey(id, full_name),
           supervisor:supervisors!matches_supervisor_id_fkey(id, full_name, is_video_supervisor),
-  video_supervisor:supervisors!matches_video_supervisor_id_fkey(id, full_name)
+          video_supervisor:supervisors!matches_video_supervisor_id_fkey(id, full_name)
         `,
           { count: "exact" },
         )
@@ -52,11 +52,13 @@ export function useMatches({
       if (filters.group_id) query = query.eq("group_id", filters.group_id);
       if (filters.date) query = query.eq("match_date", filters.date);
 
-      console.log("Applied Status Filter:", filters.status);
       if (filters.status === "upcoming") {
         const today = new Date().toISOString().split("T")[0];
         query = query.gte("match_date", today);
-      } else if (filters.status === "past") {
+      } else if (
+        filters.status === "past" ||
+        filters.status === "finished"
+      ) {
         const today = new Date().toISOString().split("T")[0];
         query = query.lt("match_date", today);
       }
@@ -72,14 +74,7 @@ export function useMatches({
         query = query.eq("away_team_id", filters.away_team_id);
 
       const { data, error, count } = await query;
-      console.log("🔎 Matches Query Result:", {
-  status: filters.status,
-  total: count,
-  dates: data?.map((match) => ({
-    date: match.match_date,
-    time: match.match_time,
-  })),
-});
+
       if (error) throw error;
       return { data: data || [], total: count || 0 };
     },
@@ -222,21 +217,88 @@ const NOTIFY_COLUMNS = {
   avar: "avar_referee_notified",
 };
 
+// هل كل الأدوار المعينة اتبلغت؟
+function computeAllNotified(match) {
+  return (
+    (!match.main_referee_id || match.main_referee_notified) &&
+    (!match.assistant1_referee_id || match.assistant1_notified) &&
+    (!match.assistant2_referee_id || match.assistant2_notified) &&
+    (!match.fourth_referee_id || match.fourth_referee_notified) &&
+    (!match.var_referee_id || match.var_referee_notified) &&
+    (!match.avar_referee_id || match.avar_referee_notified)
+  );
+}
+
 export function useToggleNotify() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ matchId, role, currentValue }) => {
       const column = NOTIFY_COLUMNS[role];
       if (!column) throw new Error("دور غير صالح");
-      const { error } = await supabase
+
+      // 1) حدّث عمود الدور
+      const { data, error } = await supabase
         .from("matches")
         .update({ [column]: !currentValue })
-        .eq("id", matchId);
+        .eq("id", matchId)
+        .select()
+        .single();
+
       if (error) throw error;
+      if (!data) throw new Error("لم يتم تحديث أي صف — تحقق من RLS");
+
+      // 2) احسب is_notified من الأعمدة الفعلية
+      const allNotified = computeAllNotified(data);
+
+      // 3) حدّث is_notified لو اتغيرت
+      if (data.is_notified !== allNotified) {
+        const { error: err2 } = await supabase
+          .from("matches")
+          .update({ is_notified: allNotified })
+          .eq("id", matchId);
+        if (err2) throw err2;
+      }
+
+      return data;
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["matches"] });
       toast.success(vars.currentValue ? "تم إلغاء التبليغ" : "تم التبليغ");
+    },
+    onError: (err) => toast.error(err.message || "حدث خطأ"),
+  });
+}
+
+// ============================================
+// تبليغ الطقم كامل مرة واحدة
+// ============================================
+export function useNotifyCrew() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ matchId, match }) => {
+      const updates = { is_notified: true };
+
+      if (match.main_referee_id) updates.main_referee_notified = true;
+      if (match.assistant1_referee_id) updates.assistant1_notified = true;
+      if (match.assistant2_referee_id) updates.assistant2_notified = true;
+      if (match.fourth_referee_id) updates.fourth_referee_notified = true;
+      if (match.var_referee_id) updates.var_referee_notified = true;
+      if (match.avar_referee_id) updates.avar_referee_notified = true;
+
+      const { data, error } = await supabase
+        .from("matches")
+        .update(updates)
+        .eq("id", matchId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error("لم يتم تحديث أي صف — تحقق من RLS");
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["matches"] });
+      toast.success("تم تبليغ الطقم بنجاح");
     },
     onError: (err) => toast.error(err.message || "حدث خطأ"),
   });
@@ -252,7 +314,7 @@ export function useAssignCrewBulk() {
       const results = await Promise.all(
         payload.map((item) => {
           const { id, ...data } = item;
-          return supabase.from("matches").update(data).eq("id", id);
+          return supabase.from("matches").update(data).eq("id", id).select();
         }),
       );
       const errors = results.filter((r) => r.error);
